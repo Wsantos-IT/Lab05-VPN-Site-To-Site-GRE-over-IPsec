@@ -1,0 +1,112 @@
+! --- Access & Security Basic Config Switch --- !
+hostname Branch-RTR
+no ip domain-lookup
+service password-encryption
+!
+banner motd # 
+========================================
+ AVISO: Acceso restringido y monitoreado
+========================================
+ #
+banner exec #
+ ------------------------------------------------------------
+[ ACCESO CONCEDIDO ]
+Dispositivo actual: $(hostname)
+Entorno: Eve-NG - Lab Win
+------------------------------------------------------------
+#
+!
+enable algorithm-type scrypt secret ciscoenpa55
+!
+! --- Admin User --- !
+username admin privilege 15 algorithm-type scrypt secret ciscoadminpa55
+!
+! --- Remote Access --- !
+ip domain-name winlab
+ip ssh version 2
+crypto key generate rsa general-keys modulus 2048
+!
+line vty 0 4
+exec-timeout 5 0
+logging synchronous
+login local
+transport input ssh
+exit
+!
+! --- Console ---- !
+line con 0
+exec-timeout 5 0
+logging synchronous
+no login
+privelege level 15
+exit
+!
+interface loopback 0
+ip address 172.16.255.1 255.255.255.255
+exit
+!
+interface e0/0
+ip address 192.168.0.54 255.255.255.0
+ip nat outside
+exit
+interface e0/1
+ip address 172.16.10.1 255.255.255.0
+ip ospf 1 area 0
+ip nat inside
+exit
+!
+ip access-list ACL_LAB_NAT
+permit 172.16.10.0 0.0.0.255
+exit
+!
+ip nat inside source list ACL_LAB_NAT interface e0/0 overload
+!
+! --- VPN SITE TO SITE --- !
+interface tunnel 1
+tunnel source e0/0
+tunnel destination 192.168.0.245
+ip address 10.252.10.2 255.255.255.0
+tunnel protection ipsec profile IPSEC-PROF1
+ip mtu 1400
+ip tcp adjust-mss 1360
+exit
+!
+router ospf 1
+network 10.252.10.2 0.0.0.0 area 0
+exit
+!
+! --- Cryptografia --- !
+crypto ikev2 proposal PROP1
+encryption aes-gcm-256
+prf sha256
+group 19
+exit
+!
+crypto ikev2 policy POL1
+proposal PROP1
+exit
+!
+crypto ikev2 keyring KR1
+peer Edge-RTR
+address 192.168.0.245
+pre-shared-key vpn123
+end
+conf t
+!
+crypto ikev2 profile PROF1
+match identity remote address 192.168.0.245 255.255.255.255
+authentication remote pre-share
+authentication local pre-share
+keyring local KR1
+end
+conf t
+!
+crypto ipsec transform-set Tunelgre esp-gcm 256
+mode transport
+exit
+crypto ipsec profile IPSEC-PROF1 
+set transform-set Tunelgre
+set pfs group19
+set ikev2-profile PROF1
+end
+!
