@@ -36,7 +36,7 @@ Notas de campo
 ##  Topología de la Red
 Microsoft Visio
 
-<img width="746" alt="image" src="./Topologia-logica/lab05imagenlogica.png"/>
+<img width="746" alt="image" src="./Topologia-Logica/lab05imagenlogica.png"/>
 
 ###  Subnets
 
